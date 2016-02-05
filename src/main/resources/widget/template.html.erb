@@ -5,81 +5,103 @@
 </div>
 <script>
 /* globals $j*/
-var url = window.location.protocol + '//' + window.location.host + '/';
-var api = url + 'api';
+var url = window.location.protocol + '//' + window.location.host + '/'
+  , api = url + 'api';
 
 (function () {
-
   'use strict';
   $j(document).ready(function () {
-
+    /**
+    * Retrieve current index from current URL.
+    * If current index is missing, get id.
+    * @returns {String} - current index or id
+    */
     function getCurrentIndex() {
-      var index = window.location.pathname.split("/")[3];
-      if(index === undefined){
+      var index = window.location.pathname.split('/')[3];
+
+      if (index === undefined) {
         return getUrlParam('id');
-      } else {
-        return index;
       }
+
+      return index;
     }
 
+    /**
+    * Retrieve dashboard id from URL.
+    * @returns {String} - current dashboard id
+    */
     function getDashIndex() {
+      // dashboard id
       var did = getUrlParam('did');
-      if(did){
-        return "?did=" + did;
-      } else {
-        return '';
+
+      if (did) {
+        return '?did=' + did;
       }
+
+      return '';
     }
 
+    /**
+    * Retrieve paramater value from URL
+    * @param {String} name - paramater name to retrieve value of
+    * @returns {String | Number | null} - string value of parameter, 0 if no value, null if param not found
+    */
     function getUrlParam(name) {
       var results = new RegExp('[\?&]' + name + '=([^&#]*)').exec(window.location.href);
-      if (results==null){
+
+      if (!results) {
         return null;
       }
-      else{
-        return results[1] || 0;
-      }
+
+      return results[1] || 0;
     }
 
     $j.get(api + '/resources/index?depth=1&qualifiers=SVW,TRK,BRC,UTS,DIR,FIL,DEV&resource=' + getCurrentIndex())
-    .success(function(resourceResponse) {
-      if(resourceResponse.length === 0){
-        $j('#views').append('<li style="margin:5px">No Children</li>');
-      } else {
+      .success(function (resourceResponse) {
+        // no children found
+        if (resourceResponse.length === 0){
+          $j('#views').append('<li style="margin:5px">No Children</li>');
+          return;
+        }
+
         $j.each(resourceResponse, function (index, resource) {
           // we found that children of subviews are strange copies of the actual children
           // if scope is 'fil' and not 'prj', we know that we need to replace the reference
-          if(resource.scope === 'FIL' && resource.qualifier === 'TRK'){
+          if (resource.scope === 'FIL' && resource.qualifier === 'TRK') {
             // get all the views so we can check if their keys are at the beginning of our resource's key
             $j.get(api + '/resources/index?qualifiers=VW')
-            .success(function(viewsResponse) {
-              // sort by length so we avoid issues of similar bust smaller key values being found first
-              viewsResponse.sort(function(a, b){
-                return b.length - a.length;
-              });
-              // variable set so we can stop the loop early if a view key is found
-              var stripped = false;
-              // for each view, check to see if it's at the beginning of our resource key
-              $j.each(viewsResponse, function (index, view) {
-                if(stripped) return;
-                if(resource.key.indexOf(view.key) === 0){
-                  // strip the resource key of its view key
-                  $j('#views').append('<li style="margin:5px"><img style="position:absolute" src="' + url + 'images/q/' + resource.qualifier + '.png" alt="' + resource.qualifier + '"> <a style="margin-left:20px" href="' + url + 'dashboard/index/' + resource.key.substring(view.key.length,resource.key.length) + getDashIndex() + '">' + resource.name + '</a></li>');
-                  stripped = true;
+              .success(function (viewsResponse) {
+                // variable set so we can stop the loop early if a view key is found
+                var stripped = false;
+
+                // sort by length so we avoid issues of similar bust smaller key values being found first
+                viewsResponse.sort(function(a, b){
+                  return b.length - a.length;
+                });
+
+                // for each view, check to see if it's at the beginning of our resource key
+                $j.each(viewsResponse, function (index, view) {
+                  if (stripped) {
+                    return;
+                  }
+
+                  if (resource.key.indexOf(view.key) === 0) {
+                    // strip the resource key of its view key
+                    $j('#views').append('<li style="margin:5px"><img style="position:absolute" src="' + url + 'images/q/' + resource.qualifier + '.png" alt="' + resource.qualifier + '"> <a style="margin-left:20px" href="' + url + 'dashboard/index/' + resource.key.substring(view.key.length,resource.key.length) + getDashIndex() + '">' + resource.name + '</a></li>');
+                    stripped = true;
+                  }
+                });
+
+                // if for some reason nothing was stripped and our logic was wrong, provide the default link
+                if (!stripped) {
+                  $j('#views').append('<li style="margin:5px"><img style="position:absolute" src="' + url + 'images/q/' + resource.qualifier + '.png" alt="' + resource.qualifier + '"> <a style="margin-left:20px" href="' + url + 'dashboard/index/' + resource.id + getDashIndex() + '">' + resource.name + '</a></li>');
                 }
               });
-              // if for some reason nothing was stripped and our logic was wrong, provide the default link
-              if(!stripped){
-                $j('#views').append('<li style="margin:5px"><img style="position:absolute" src="' + url + 'images/q/' + resource.qualifier + '.png" alt="' + resource.qualifier + '"> <a style="margin-left:20px" href="' + url + 'dashboard/index/' + resource.id + getDashIndex() + '">' + resource.name + '</a></li>');
-              }
-            });
-          }
-          else {
+          } else {
             $j('#views').append('<li style="margin:5px"><img style="position:absolute" src="' + url + 'images/q/' + resource.qualifier + '.png" alt="' + resource.qualifier + '"> <a style="margin-left:20px" href="' + url + 'dashboard/index/' + resource.id + getDashIndex() + '">' + resource.name + '</a></li>');
           }
         });
-      }
-    });
+      });
   });
 })();
 </script>
